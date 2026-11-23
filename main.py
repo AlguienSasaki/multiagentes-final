@@ -18,13 +18,13 @@ from objloader import *
 
 
 #Dimension del plano, el cuadro gris
-DimBoard = 2000 #300 
+DimBoard = 1800 #300 
 screen_width = 1400
 screen_height = 800
 #vc para el obser.
 FOVY=60.0
 ZNEAR=1.0
-ZFAR=900.0
+ZFAR=1800.0
 CENTER_X = DimBoard / 2.0
 CENTER_Y = 0
 CENTER_Z = DimBoard / 2.0
@@ -157,13 +157,13 @@ def Init():
     glEnable(GL_NORMALIZE)
     # Se generan los componentes graficos del carro y se gregan
     # al array objetos
-    objetos.append(OBJ("carroceria.obj", swapyz=True))
+    objetos.append(OBJ("models/carroceria.obj", swapyz=True))
     objetos[0].generate()
-    objetos.append(OBJ("llanta_FL.obj", swapyz=True))
+    objetos.append(OBJ("models/llanta_FL.obj", swapyz=True))
     objetos[1].generate()
-    objetos.append(OBJ("llanta_FR.obj", swapyz=True))
+    objetos.append(OBJ("models/llanta_FR.obj", swapyz=True))
     objetos[2].generate()
-    objetos.append(OBJ("llantas_traseras.obj", swapyz=True))
+    objetos.append(OBJ("models/llantas_traseras.obj", swapyz=True))
     objetos[3].generate()
     
 
@@ -183,6 +183,19 @@ def lookat():
   glLoadIdentity()
   gluLookAt(EYE_X, EYE_Y, EYE_Z, CENTER_X, CENTER_Y, CENTER_Z, UP_X, UP_Y, UP_Z)
 
+def ajustar_zoom(delta):
+  global radius, EYE_Y
+  # Límites para no atravesar el centro ni alejarse más allá de ZFAR
+  radius_min = 60.0
+  radius_max = 2800.0
+
+  # Guardamos la proporción altura/distancia original (150 / 250 = 0.6)
+  relacion_altura = 0.6
+
+  radius = max(radius_min, min(radius_max, radius + delta))
+  EYE_Y = radius * relacion_altura
+  lookat()
+
 def display():
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
     Axis()
@@ -198,24 +211,23 @@ def display():
     altura_piso = -10.0
 
     glBegin(GL_QUADS)
-    # Normal apuntando hacia +Y para reaccionar correctamente a GL_LIGHT0
     glNormal3f(0.0, 1.0, 0.0)
 
-    # Vértice 1: Esquina origen (0, 0) -> UV (0, 0)
+    # Vértice 1: Esquina origen (0, 0)
     glTexCoord2f(0.0, 0.0)
     glVertex3d(0.0, altura_piso, 0.0)
 
-    # Vértice 2: Esquina +Z (0, DimBoard) -> UV (0, 1)
+    # Vértice 2: Esquina +Z (0, LARGO_Z)
     glTexCoord2f(0.0, 1.0)
-    glVertex3d(0.0, altura_piso, DimBoard)
+    glVertex3d(0.0, altura_piso, LARGO_Z)
 
-    # Vértice 3: Esquina opuesta (DimBoard, DimBoard) -> UV (1, 1)
+    # Vértice 3: Esquina opuesta (ANCHO_X, LARGO_Z)
     glTexCoord2f(1.0, 1.0)
-    glVertex3d(DimBoard, altura_piso, DimBoard)
+    glVertex3d(ANCHO_X, altura_piso, LARGO_Z)
 
-    # Vértice 4: Esquina +X (DimBoard, 0) -> UV (1, 0)
+    # Vértice 4: Esquina +X (ANCHO_X, 0)
     glTexCoord2f(1.0, 0.0)
-    glVertex3d(DimBoard, altura_piso, 0.0)
+    glVertex3d(ANCHO_X, altura_piso, 0.0)
     glEnd()
 
     # Apagar las texturas 2D después de dibujar el piso para no afectar otros objetos sin textura
@@ -247,6 +259,20 @@ while not done:
         carros[-1].setRota('L')
     if keys[pygame.K_d]:
         carros[-1].setRota('R')
+
+    # Control de órbita horizontal
+    if keys[pygame.K_LEFT]:
+      theta = (theta + 0.7) % 360
+      lookat()
+    if keys[pygame.K_RIGHT]:
+      theta = (theta - 0.7) % 360
+      lookat()
+
+    # Control de acercamiento y alejamiento (Zoom)
+    if keys[pygame.K_UP]:
+      ajustar_zoom(-5.0)  # Reduce el radio para acercar
+    if keys[pygame.K_DOWN]:
+      ajustar_zoom(5.0)  # Aumenta el radio para alejar
     
     for event in pygame.event.get():
         if event.type == pygame.KEYDOWN:
