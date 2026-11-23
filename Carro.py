@@ -99,9 +99,12 @@ class Carro:
          elif dir == 'R':
            self.Ll_F_Ry = max(self.Ll_F_Ry - paso_giro, -max_giro)
 
+    def hay_colision(self, next_x, next_z, edificios):
+            radio_carro = 3.5 * self.Scale
+            return any(ed.colisiona_con(next_x, next_z, radio_carro) for ed in edificios)
+    
 
-        
-    def update(self):
+    def update(self, edificios=[]):
         if self.Avanza:
             if abs(self.Ll_F_Ry) > 0.1:
                 vel_angular = (self.vel / self.L) * math.tan(
@@ -109,20 +112,20 @@ class Carro:
                 )
                 self.Body_Ry += math.degrees(vel_angular)
 
-                # Actualizar vector de direccion segun la rotacion actual del cuerpo
-                rad_body = math.radians(self.Body_Ry)
-                self.Direction[0] = math.cos(rad_body)
-                self.Direction[2] = -math.sin(rad_body)
+            rad_body = math.radians(self.Body_Ry)
+            self.Direction[0] = math.cos(rad_body)
+            self.Direction[2] = -math.sin(rad_body)
 
-                # Mover el carro en el plano XZ
-                self.Position[0] += self.Direction[0] * self.vel
-                self.Position[2] += self.Direction[2] * self.vel
+            next_x = self.Position[0] + self.Direction[0] * self.vel
+            next_z = self.Position[2] + self.Direction[2] * self.vel
 
-                # Rotar las llantas sobre su eje de rodamiento (Z)
+            if not self.hay_colision(next_x, next_z, edificios):
+                self.Position[0] = next_x
+                self.Position[2] = next_z
                 self.LlantaT_angZ += math.degrees(self.LlantaT_angZ_delta)
 
-                # Reiniciar bandera para que requiera mantener presionada la tecla W
-                self.Avanza = False
+            self.Avanza = False
+        
 
     # T_llanta: vector para ubicar la llanta en su posicion
     # id_llanta: para identificar si es llanta izquierda(1) o derecha(2)
