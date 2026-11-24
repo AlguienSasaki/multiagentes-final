@@ -14,6 +14,7 @@ import sys
 sys.path.append("..")
 from Carro import Carro
 from Edificio import Edificio
+from Fuente import Fuente
 
 # Import obj loader
 from objloader import *
@@ -21,12 +22,12 @@ from objloader import *
 
 # Dimension del plano, el cuadro gris
 DimBoard = 1800  # 300
-screen_width = 1400
-screen_height = 800
+screen_width = 1050
+screen_height = 600
 # vc para el obser.
 FOVY = 60.0
 ZNEAR = 1
-ZFAR = 2800
+ZFAR = 6800
 CENTER_X = DimBoard / 2.0
 CENTER_Y = 0
 CENTER_Z = DimBoard / 2.0
@@ -53,6 +54,7 @@ Z_MAX = 500
 objetos = []
 carros = []
 edificios = []
+fuente = []
 ncarros = 1
 modelo_edificio = None
 
@@ -148,7 +150,7 @@ def dibujar_piso():
 
 
 def Init():
-    global textura_piso, ANCHO_X, LARGO_Z, CENTER_X, CENTER_Z, modelo_edificio, edificios
+    global textura_piso, ANCHO_X, LARGO_Z, CENTER_X, CENTER_Z, modelo_edificio, edificios, modelo_fuente, fuente
 
     # 1. PRIMERO crear la ventana y el contexto OpenGL
     screen = pygame.display.set_mode((screen_width, screen_height), DOUBLEBUF | OPENGL)
@@ -189,6 +191,9 @@ def Init():
     modelo_edificio = OBJ("models/edificio.obj", swapyz=False)
     modelo_edificio.generate()
 
+    modelo_fuente= OBJ("models/fuente.obj", swapyz=False)
+    modelo_fuente.generate()
+
     esc_x, esc_y, esc_z = 55.0, 14.0, 14.0
     medio_ancho = (18.0 * esc_x) / 2.0
     medio_largo = (38.0 * esc_z) / 2.0
@@ -201,9 +206,19 @@ def Init():
         (ANCHO_X * 0.75 + 60, LARGO_Z * 0.75 - 45),
     ]
 
+
+    posicion_fuente= [
+        (ANCHO_X * 0.5 , LARGO_Z * 0.5 ),
+    ]
+
     edificios.clear()
+    fuente.clear()
     for cx, cz in posiciones_edificios:
         edificios.append(Edificio(cx, -10.0, cz, escala_ed, modelo_edificio))
+    
+    escala_fuente = (800.0, 800.0, 800.0)
+    for cx, cz in posicion_fuente:
+        fuente.append(Fuente(modelo_fuente, (cx, 0.0, cz), scale=escala_fuente))
 
     objetos.append(OBJ("models/carroceria.obj", swapyz=True))
     objetos[0].generate()
@@ -237,7 +252,7 @@ def ajustar_zoom(delta):
     global radius, EYE_Y
     # Límites para no atravesar el centro ni alejarse más allá de ZFAR
     radius_min = 60.0
-    radius_max = 2800.0
+    radius_max = ZFAR / 2
 
     # Guardamos la proporción altura/distancia original (150 / 250 = 0.6)
     relacion_altura = 0.6
@@ -249,7 +264,7 @@ def ajustar_zoom(delta):
 
 def update():
     for car in carros:
-        car.update(edificios)
+        car.update(edificios, fuente)
 
 def display():
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -259,6 +274,9 @@ def display():
     glColor3f(1.0, 1.0, 1.0)
     for ed in edificios:
         ed.draw()
+
+    for f in fuente:
+        f.draw()
 
     for car in carros:
         car.draw()
@@ -270,7 +288,7 @@ while not done:
     keys = pygame.key.get_pressed()
     # avanzar observador
 
-    if keys[pygame.K_LEFT]:
+    if keys[pygame.K_UP]:
         theta = (theta + 0.7) % 360
         lookat()
     if keys[pygame.K_RIGHT]:
@@ -285,18 +303,18 @@ while not done:
         carros[-1].setRota("R")
 
     # Control de órbita horizontal
-    if keys[pygame.K_LEFT]:
+    if keys[pygame.K_h]:
         theta = (theta + 0.7) % 360
         lookat()
-    if keys[pygame.K_RIGHT]:
+    if keys[pygame.K_l]:
         theta = (theta - 0.7) % 360
         lookat()
-
-    # Control de acercamiento y alejamiento (Zoom)
-    if keys[pygame.K_UP]:
+    if keys[pygame.K_k]:
         ajustar_zoom(-5.0)  # Reduce el radio para acercar
-    if keys[pygame.K_DOWN]:
+        lookat()
+    if keys[pygame.K_j]:
         ajustar_zoom(5.0)  # Aumenta el radio para alejar
+        lookat()
 
     for event in pygame.event.get():
         if event.type == pygame.KEYDOWN:

@@ -99,12 +99,23 @@ class Carro:
          elif dir == 'R':
            self.Ll_F_Ry = max(self.Ll_F_Ry - paso_giro, -max_giro)
 
-    def hay_colision(self, next_x, next_z, edificios):
+    def hay_colision(self, next_x, next_z, edificios, fuente):
             radio_carro = 3.5 * self.Scale
-            return any(ed.colisiona_con(next_x, next_z, radio_carro) for ed in edificios)
-    
+            # Colisión rectangular contra edificios
+            if any(ed.colisiona_con(next_x, next_z, radio_carro) for ed in edificios):
+                return True
 
-    def update(self, edificios=[]):
+            # Colisión circular contra las fuentes
+            for f in fuente:
+                dx = next_x - f.Position[0]
+                dz = next_z - f.Position[2]
+                distancia = (dx**2 + dz**2)**0.5
+                if distancia < (f.half_x + radio_carro):
+                    return True
+
+            return False
+
+    def update(self, edificios=[], fuente=[]):
         if self.Avanza:
             if abs(self.Ll_F_Ry) > 0.1:
                 vel_angular = (self.vel / self.L) * math.tan(
@@ -119,13 +130,12 @@ class Carro:
             next_x = self.Position[0] + self.Direction[0] * self.vel
             next_z = self.Position[2] + self.Direction[2] * self.vel
 
-            if not self.hay_colision(next_x, next_z, edificios):
+            if not self.hay_colision(next_x, next_z, edificios, fuente):
                 self.Position[0] = next_x
                 self.Position[2] = next_z
                 self.LlantaT_angZ += math.degrees(self.LlantaT_angZ_delta)
 
             self.Avanza = False
-        
 
     # T_llanta: vector para ubicar la llanta en su posicion
     # id_llanta: para identificar si es llanta izquierda(1) o derecha(2)
