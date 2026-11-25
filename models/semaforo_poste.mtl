@@ -1,0 +1,22 @@
+# Material library for semaforo_poste.obj
+# Poste gris y encapsulado amarillo
+
+newmtl poste_gris
+Ns 64.000000
+Ka 0.350000 0.350000 0.350000
+Kd 0.780000 0.810000 0.850000
+Ks 0.250000 0.250000 0.250000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+
+newmtl encapsulado_amarillo
+Ns 64.000000
+Ka 0.400000 0.350000 0.100000
+Kd 0.980000 0.820000 0.240000
+Ks 0.300000 0.300000 0.300000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2

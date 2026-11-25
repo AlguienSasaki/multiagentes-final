@@ -15,6 +15,7 @@ sys.path.append("..")
 from Carro import Carro
 from Edificio import Edificio
 from Fuente import Fuente
+from Semaforo import Semaforo
 
 # Import obj loader
 from objloader import *
@@ -55,6 +56,7 @@ objetos = []
 carros = []
 edificios = []
 fuente = []
+semaforos = []
 ncarros = 1
 modelo_edificio = None
 
@@ -198,6 +200,35 @@ def Init():
     medio_ancho = (18.0 * esc_x) / 2.0
     medio_largo = (38.0 * esc_z) / 2.0
 
+    # Cargar modelos de semaforo (no llamar .generate() en modelo_barra)
+    modelo_poste = OBJ("models/semaforo_poste.obj", swapyz=False)
+    modelo_poste.generate()
+    modelo_barra = OBJ("models/semaforo_barra.obj", swapyz=False)
+
+    # Configuracion para los 4 accesos alrededor de la glorieta central
+    # (x, y, z, rotacion_y, estado_inicial)
+    config_semaforos = [
+        (ANCHO_X * 0.5, -10.0, LARGO_Z * 0.5 + 260.0, 0.0, "VERDE"),    # Acceso Sur
+        (ANCHO_X * 0.5, -10.0, LARGO_Z * 0.5 - 260.0, 0.0, "VERDE"),    # Acceso Norte
+        (ANCHO_X * 0.5 + 260.0, -10.0, LARGO_Z * 0.5, 90.0, "ROJO"),    # Acceso Este
+        (ANCHO_X * 0.5 - 260.0, -10.0, LARGO_Z * 0.5, 90.0, "ROJO"),    # Acceso Oeste
+    ]
+
+    semaforos.clear()
+    for sx, sy, sz, rot, est in config_semaforos:
+        semaforos.append(
+            Semaforo(
+                modelo_poste=modelo_poste,
+                modelo_barra=modelo_barra,
+                pos=(sx, sy, sz),
+                scale=(16.0, 16.0, 16.0),
+                rot_y=rot,
+                estado_inicial=est,
+                duraciones={"VERDE": 5.0, "AMARILLO": 1.5, "ROJO": 6.5},
+                auto_ciclo=True,
+            )
+        )
+
     escala_ed = (55.0, 14.0, 14.0)
     posiciones_edificios = [
         (ANCHO_X * 0.25 - 60, LARGO_Z * 0.25 + 45),
@@ -263,6 +294,9 @@ def ajustar_zoom(delta):
 
 
 def update():
+    for sem in semaforos:
+            sem.update()
+
     for car in carros:
         car.update(edificios, fuente)
 
@@ -280,6 +314,9 @@ def display():
 
     for car in carros:
         car.draw()
+
+    for sem in semaforos:
+        sem.draw()
 
 
 done = False
