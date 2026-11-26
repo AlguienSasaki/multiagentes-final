@@ -1,0 +1,9 @@
+,,tiempo_espera_promedio_s,tiempo_espera_promedio_s,velocidad_promedio_ms,velocidad_promedio_ms,fila_promedio_veh,fila_promedio_veh,fila_maxima_veh,fila_maxima_veh,cruces_completados,cruces_completados,colisiones,colisiones,infracciones_semaforo,infracciones_semaforo
+,,mean,std,mean,std,mean,std,mean,std,mean,std,mean,std,mean,std
+escenario,politica,,,,,,,,,,,,,,
+ligero,adaptativa,8.69,1.75,6.41,0.09,0.02,0.0,2.2,0.45,122.2,1.92,0.0,0.0,0.0,0.0
+ligero,fija,69.38,4.87,4.42,0.09,0.15,0.01,3.2,0.84,84.4,2.88,0.0,0.0,0.0,0.0
+moderado,adaptativa,19.96,1.99,5.67,0.07,0.11,0.01,4.6,1.14,269.0,4.47,0.0,0.0,0.0,0.0
+moderado,fija,65.47,1.16,4.4,0.05,0.36,0.01,5.0,0.71,204.0,2.65,0.0,0.0,0.0,0.0
+elevado,adaptativa,40.85,1.79,4.84,0.11,0.45,0.02,8.4,1.52,450.4,7.5,0.0,0.0,0.0,0.0
+elevado,fija,67.89,4.45,4.04,0.14,0.75,0.05,9.0,1.0,371.8,11.19,0.0,0.0,0.0,0.0
