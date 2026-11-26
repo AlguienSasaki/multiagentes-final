@@ -94,16 +94,23 @@ class OBJ:
         glNewList(self.gl_list, GL_COMPILE)
         glEnable(GL_TEXTURE_2D)
         glFrontFace(GL_CCW)
+        material_actual = None
         for face in self.faces:
             vertices, normals, texture_coords, material = face
 
-            mtl = self.mtl[material]
-            if 'texture_Kd' in mtl:
-                # use diffuse texmap
-                glBindTexture(GL_TEXTURE_2D, mtl['texture_Kd'])
-            else:
-                # just use diffuse colour
-                glColor(*mtl['Kd'])
+            # El material solo se cambia cuando es distinto al de la cara anterior
+            if material != material_actual:
+                material_actual = material
+                mtl = self.mtl[material]
+                if 'texture_Kd' in mtl:
+                    # use diffuse texmap
+                    glBindTexture(GL_TEXTURE_2D, mtl['texture_Kd'])
+                else:
+                    # just use diffuse colour
+                    # (se desliga la textura anterior; si no, la fuente y los
+                    # carros tomaban los colores de palette.png del edificio)
+                    glBindTexture(GL_TEXTURE_2D, 0)
+                    glColor(*mtl['Kd'])
 
             glBegin(GL_POLYGON)
             for i in range(len(vertices)):
@@ -118,6 +125,3 @@ class OBJ:
 
     def render(self):
         glCallList(self.gl_list)
-
-    def free(self):
-        glDeleteLists([self.gl_list])

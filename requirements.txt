@@ -1,0 +1,17 @@
+# Versiones probadas con Python 3.13 en Windows 11
+# Sistema multiagentes
+agentpy==0.1.5
+numpy==2.5.5
+scipy==1.18.1
+SALib==1.6.0
+networkx==3.7
+joblib==1.6.0
+pandas==3.1.1
+matplotlib==3.11.2
+# Gráficos
+pygame==2.6.1
+PyOpenGL==3.1.10
+# Notebook
+notebook==7.6.5
+ipykernel==7.4.0
+nbconvert==7.17.2

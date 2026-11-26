@@ -8,3 +8,7 @@ include/*
 lib/
 lib/*
 pyvenv.cfg
+.venv/
+capturas/
+.vscode/
+.ipynb_checkpoints/

@@ -1,178 +1,146 @@
 #Autor: Ivan Olmos Pineda
+# Adaptado para el proyecto: el carro ya no se maneja con el teclado,
+# ahora copia el estado de su AgenteVehiculo (AgentPy) en cada cuadro.
 
-import pygame
-from pygame.locals import *
-
-# Cargamos las bibliotecas de OpenGL
 from OpenGL.GL import *
-from OpenGL.GLU import *
-from OpenGL.GLUT import *
-
-# Import obj loader
-from objloader import *
 
 import numpy as np
-import random
 import math
 
-class Carro:
-    
-    def __init__(self, dim, vel, Scale):
-        self.DimBoard = dim
-        #Se inicializa una posicion en el tablero
-        #self.Position = np.array([0.0, 0.0, 0.0]) # inincializacion en el eje 0,0,0
-        self.Position = np.array([dim/2.0, 0.0, dim/2.0])
-        #Se inicializa un vector de direccion
-        self.Direction = np.array([1.0, 0.0, 0.0])
-        #Se normaliza el vector de direccion
-        m = math.sqrt(self.Direction[0]*self.Direction[0] + self.Direction[2]*self.Direction[2])
-        self.Direction[0] /= m
-        self.Direction[2] /= m
-        #Se almacena la magnitud de velocidad
-        self.vel = vel
-        #arreglo de cubos
-        self.component = []
-        #Variables de control globales del carro
-        self.Avanza = False
-        self.Rota = False
-        self.Scale = Scale
-        self.Body_Ry = 0.0
-        #rotacion de llantas frontales
-        self.Ll_F_Ry = 0.0
-        
-        self.cos_ang = 0.0
-        self.sin_ang = 0.0
-        self.cos_angF = 0.0
-        self.sin_angF = 0.0
-        #Matrices para optimizacion de operadores
-        # La siguiente declaracion asume que en tiempo de ejecucion se transpone la matriz
-        # para usarla como la requiere OpenGL
-        # self.M_Carroceria = np.identity(4, dtype=np.float32)
-        # Para optimizar, se declaran las matrices identidad traspuestas
-        self.M_Carroceria = np.identity(4, dtype=np.float32).T
-        # Matriz para las llantas traseras
-        self.M_Llantas_traseras = np.identity(4, dtype=np.float32).T
-        # Matriz para la llanta frontal izquierda
-        self.M_Llanta_F = np.identity(4, dtype=np.float32).T
-        # Matriz para la llanta frontal derecha
-        #self.M_Llanta_FR = np.identity(4, dtype=np.float32).T
+from figuras import caja
 
-        # Se define el radio base del objeto llanta (depende del tamaño del objeto grafico)
-        # (se debe modificar manualmente dependiendo de dicho tamaño)
-        self.Llanta_radio_base = 1.0
-        # Radio de la llanta considerando la escala del carro
-        self.Llanta_radio = self.Llanta_radio_base * self.Scale
-        # Traslacion base del origen a la posicon del eje trasero del carro
-        # Este vector depende de la escala del carro
-        self.LlantaT_dist = self.Scale * np.array([-2.3,-0.5,0])
-        self.LlantaT_pos = np.copy(self.LlantaT_dist)
-        # Para que las llantas tengan el efecto de girar hacia adelante
-        # se debe calcular el angulo de rotacion de las mismas a partir de la formula
-        # theta = (360 * d) / (2*pi*r), donde d es la distancia a recorrer y r el 
-        # radio de la llanta
-        # La distancia a recorrer depende de la velocidad (el vector de direccion es unitario)
-        # como se desea que el carrito avance, la rotación es en contra de las manecillas del reloj
-        # con respecto al eje Z, por lo tanto es una rotación negativa
-        self.LlantaT_angZ_delta = math.radians((-1.0 * 360.0 * self.vel) / (2.0 * np.pi * self.Llanta_radio))
-        # angulo de rotacion inicial para las llantas frontales y traseras
+# Altura del piso en main.py
+ALTURA_PISO = -10.0
+
+ROJO_FRENO = (1.0, 0.05, 0.05)
+ROJO_APAGADO = (0.45, 0.04, 0.04)
+NARANJA = (1.0, 0.6, 0.0)
+
+
+class Carro:
+
+    def __init__(self, componentes, Scale, lista_carroceria):
+        # Los modelos OBJ se cargan una sola vez en main.py y se comparten.
+        # lista_carroceria es la lista de OpenGL de la carrocería ya pintada
+        # del color de este carro.
+        self.component = componentes
+        self.lista_carroceria = lista_carroceria
+        self.Scale = Scale
+        # Se coloca el carro para que las llantas toquen el piso
+        # (centro de llanta a -0.5 y radio de 0.72 en unidades del modelo)
+        self.Position = np.array([0.0, ALTURA_PISO + 1.22 * Scale, 0.0])
+        self.Body_Ry = 0.0
+        #rotacion de llantas frontales (volante)
+        self.Ll_F_Ry = 0.0
+        #rotacion de las llantas sobre su eje (avance)
         self.LlantaT_angZ = 0.0
+        # Traslacion base del origen a la posicon del eje trasero del carro
+        self.LlantaT_pos = self.Scale * np.array([-2.3, -0.5, 0])
         # variables para llantas frontales
         self.LlantaFL_pos = self.Scale * np.array([3.5, -0.5, -1.5])
         self.LlantaFR_pos = self.Scale * np.array([3.5, -0.5, 1.5])
-        # Distancia entre ejes
-        self.L = abs(self.LlantaFL_pos[0] - self.LlantaT_pos[0])
-        # Intervalo de tiempo por frame
-        self.dt = 100
+        # Estado que se muestra con las luces
+        self.frenando = False
+        self.direccional = None      # "izq", "der" o None
+        self.parpadeo = False
 
-    def getComponents(self, comp):
-        self.component = comp
-        
-    def setAvanza(self):
-        self.Avanza = True
-#        
-    def setRota(self, dir):
-         # Limite de giro para que las llantas no atraviesen la carroceria
-         max_giro = 35.0
-         paso_giro = 2.0
-         if dir == 'L':
-           self.Ll_F_Ry = min(self.Ll_F_Ry + paso_giro, max_giro)
-         elif dir == 'R':
-           self.Ll_F_Ry = max(self.Ll_F_Ry - paso_giro, -max_giro)
+    def sincronizar(self, agente, alpha):
+        """Copia posición, orientación, llantas y luces del agente.
+        alpha (0 a 1) interpola entre el paso lógico anterior y el actual para
+        que el movimiento se vea suave aunque los FPS no coincidan con DT."""
+        x0, z0 = agente.pos_anterior
+        x1, z1 = agente.posicion
+        self.Position[0] = x0 + (x1 - x0) * alpha
+        self.Position[2] = z0 + (z1 - z0) * alpha
+        d = math.atan2(math.sin(agente.direccion - agente.dir_anterior),
+                       math.cos(agente.direccion - agente.dir_anterior))
+        rumbo = agente.dir_anterior + d * alpha
+        # El modelo mira hacia +X y glRotatef gira hacia -Z con angulos positivos
+        self.Body_Ry = -math.degrees(rumbo)
+        self.Ll_F_Ry = agente.giro_llantas
+        self.LlantaT_angZ = agente.rotacion_llantas
 
-    def hay_colision(self, next_x, next_z, edificios, fuente):
-            radio_carro = 3.5 * self.Scale
-            # Colisión rectangular contra edificios
-            if any(ed.colisiona_con(next_x, next_z, radio_carro) for ed in edificios):
-                return True
-
-            # Colisión circular contra las fuentes
-            for f in fuente:
-                dx = next_x - f.Position[0]
-                dz = next_z - f.Position[2]
-                distancia = (dx**2 + dz**2)**0.5
-                if distancia < (f.half_x + radio_carro):
-                    return True
-
-            return False
-
-    def update(self, edificios=[], fuente=[]):
-        if self.Avanza:
-            if abs(self.Ll_F_Ry) > 0.1:
-                vel_angular = (self.vel / self.L) * math.tan(
-                    math.radians(self.Ll_F_Ry)
-                )
-                self.Body_Ry += math.degrees(vel_angular)
-
-            rad_body = math.radians(self.Body_Ry)
-            self.Direction[0] = math.cos(rad_body)
-            self.Direction[2] = -math.sin(rad_body)
-
-            next_x = self.Position[0] + self.Direction[0] * self.vel
-            next_z = self.Position[2] + self.Direction[2] * self.vel
-
-            if not self.hay_colision(next_x, next_z, edificios, fuente):
-                self.Position[0] = next_x
-                self.Position[2] = next_z
-                self.LlantaT_angZ += math.degrees(self.LlantaT_angZ_delta)
-
-            self.Avanza = False
+        # Luces que muestran la máquina de estados
+        self.frenando = agente.estado in ("DESACELERAR", "ESPERAR")
+        self.direccional = None
+        if agente.cambio:
+            # El lado se obtiene proyectando el desplazamiento sobre el eje
+            # derecho del carro, que en el mundo es (-sin rumbo, cos rumbo)
+            ox, oz = agente.cambio["offset"]
+            lado = -ox * -math.sin(rumbo) + -oz * math.cos(rumbo)
+            self.direccional = "der" if lado > 0 else "izq"
+        elif agente.estado == "GIRAR" and abs(agente.giro_llantas) > 8.0:
+            self.direccional = "izq" if agente.giro_llantas > 0 else "der"
+        self.parpadeo = int(agente.model.tiempo * 3) % 2 == 0
 
     # T_llanta: vector para ubicar la llanta en su posicion
     # id_llanta: para identificar si es llanta izquierda(1) o derecha(2)
     def llantaFrontal(self, T_llanta, id_llanta):
         glPushMatrix()  # Se abre rama para esta llanta frontal
-      # 1. Mover al punto de anclaje delantero (izquierdo o derecho)
+        # 1. Mover al punto de anclaje delantero (izquierdo o derecho)
         glTranslatef(T_llanta[0], T_llanta[1], T_llanta[2])
         # 2. Girar sobre Y para la direccion (volante)
         glRotatef(self.Ll_F_Ry, 0.0, 1.0, 0.0)
-        # 3. Girar sobre Z para simular q
+        # 3. Girar sobre Z para simular el avance
         glRotatef(self.LlantaT_angZ, 0.0, 0.0, 1.0)
         # 4. Escalar y dibujar
         glScalef(self.Scale, self.Scale, self.Scale)
         self.component[id_llanta].render()
-        glPopMatrix()  # Se
-    
-    def draw(self):
-        if not self.component:
-            return
+        glPopMatrix()
 
+    def sombra(self):
+        # Rectángulo oscuro semitransparente sobre el piso
+        glDisable(GL_LIGHTING)
+        glEnable(GL_BLEND)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        glDepthMask(GL_FALSE)
+        glColor4f(0.0, 0.0, 0.0, 0.35)
+        y = ALTURA_PISO - self.Position[1] + 0.5
+        s = self.Scale
+        glBegin(GL_QUADS)
+        glVertex3f(-4.8 * s, y, -2.1 * s)
+        glVertex3f(-4.8 * s, y, 2.1 * s)
+        glVertex3f(5.3 * s, y, 2.1 * s)
+        glVertex3f(5.3 * s, y, -2.1 * s)
+        glEnd()
+        glDepthMask(GL_TRUE)
+        glDisable(GL_BLEND)
+        glEnable(GL_LIGHTING)
+
+    def luces(self):
+        # Coordenadas en unidades del modelo (antes de escalar).
+        # En el carro, z negativo es el lado izquierdo.
+        glDisable(GL_LIGHTING)
+        for lado, signo in (("izq", -1), ("der", 1)):
+            # Faros delanteros
+            glColor3f(1.0, 0.96, 0.75)
+            caja(4.93, -0.16, signo * 1.25, 5.03, 0.12, signo * 1.70)
+            # Calaveras: se encienden al frenar o esperar
+            glColor3f(*(ROJO_FRENO if self.frenando else ROJO_APAGADO))
+            caja(-4.70, -0.35, signo * 0.85, -4.62, -0.02, signo * 1.45)
+            # Direccionales: parpadean del lado del giro o cambio de carril
+            if self.direccional == lado and self.parpadeo:
+                glColor3f(*NARANJA)
+                caja(-4.71, -0.35, signo * 1.48, -4.60, -0.02, signo * 1.80)
+                caja(4.80, -0.40, signo * 1.55, 5.00, -0.20, signo * 1.85)
+        glEnable(GL_LIGHTING)
+
+    def draw(self):
         glPushMatrix() #e0
-        # Se define la maquina de estados
-        # Se actualizan los componentes de la matriz optimizada
         glTranslatef(self.Position[0], self.Position[1], self.Position[2])
         glRotatef(self.Body_Ry, 0.0, 1.0, 0.0)
+        self.sombra()
 
-        # --- RAMA 1: CARROCERIA ---
+        # --- RAMA 1: CARROCERIA Y LUCES ---
         glPushMatrix()
         glScalef(self.Scale, self.Scale, self.Scale)
-        self.component[0].render()
+        glCallList(self.lista_carroceria)
+        self.luces()
         glPopMatrix()
 
         # --- RAMA 2: LLANTAS TRASERAS ---
         glPushMatrix()
-        glTranslatef(
-            self.LlantaT_pos[0], self.LlantaT_pos[1], self.LlantaT_pos[2]
-        )
+        glTranslatef(self.LlantaT_pos[0], self.LlantaT_pos[1], self.LlantaT_pos[2])
         glRotatef(self.LlantaT_angZ, 0.0, 0.0, 1.0)
         glScalef(self.Scale, self.Scale, self.Scale)
         self.component[3].render()
@@ -184,7 +152,3 @@ class Carro:
         self.llantaFrontal(self.LlantaFR_pos, 2)
 
         glPopMatrix()  # e0: Fin del carro
-        
-        
-
-                
